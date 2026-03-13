@@ -7,7 +7,7 @@ import {
 import { 
   Target, AlertTriangle, CheckCircle2, Calculator, ArrowRight, Upload, Download, ExternalLink, DollarSign, Activity, Eye, TrendingUp, BrainCircuit, BarChart3
 } from 'lucide-react';
-import { ThreeDBar, Hint, AnimatedValue, InputField } from './SharedComponents';
+import { ThreeDBar, Hint, AnimatedValue, InputField, Card } from './SharedComponents';
 
 export default function BudgetDashboard({ onBack, onNavigate }: { onBack: () => void, onNavigate: (target: 'selection' | 'sales' | 'budget' | 'creative') => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -20,9 +20,8 @@ export default function BudgetDashboard({ onBack, onNavigate }: { onBack: () => 
     purchases: 50,
   });
 
-  const handleInputChange = (field: string, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
-    setInputs(prev => ({ ...prev, [field]: numValue }));
+  const handleInputChange = (field: string, value: number) => {
+    setInputs(prev => ({ ...prev, [field]: value }));
   };
 
   // Financial Calculations
@@ -189,7 +188,7 @@ Scaling Decision,${scalingDecision.status}`;
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
             className="lg:col-span-1 space-y-6"
           >
-            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800/50 backdrop-blur-sm">
+            <Card className="p-6">
               <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <Calculator className="text-emerald-400" size={20} />
                 البيانات المالية (Financial Data)
@@ -201,7 +200,7 @@ Scaling Decision,${scalingDecision.status}`;
                 <InputField label="الظهور (Impressions)" value={inputs.impressions} onChange={(v) => handleInputChange('impressions', v)} hint="عدد مرات ظهور الإعلان لحساب الـ CPM." />
                 <InputField label="المشتريات (Purchases)" value={inputs.purchases} onChange={(v) => handleInputChange('purchases', v)} hint="عدد المبيعات الفعلية." />
               </div>
-            </div>
+            </Card>
           </motion.div>
 
           {/* KPIs & Charts Section */}
@@ -216,7 +215,7 @@ Scaling Decision,${scalingDecision.status}`;
               <KpiCard title="الربح الصافي" value={totalProfit} prefix="$" isGood={totalProfit > 0} hint="الإيرادات ناقص (الإنفاق الإعلاني + تكلفة المنتجات)." />
             </div>
 
-            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800/50 backdrop-blur-sm mt-6">
+            <Card className="p-6 mt-6">
               <h3 className="text-xl font-bold text-white mb-6">نظرة عامة على الأداء المالي (Financial Overview)</h3>
               <div className="h-80 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -234,10 +233,10 @@ Scaling Decision,${scalingDecision.status}`;
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </Card>
 
             {/* Cost Metrics Chart */}
-            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800/50 backdrop-blur-sm mt-6">
+            <Card className="p-6 mt-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
                   <BarChart3 size={20} className="text-indigo-400" />
@@ -261,7 +260,7 @@ Scaling Decision,${scalingDecision.status}`;
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </Card>
 
           </motion.div>
         </div>
@@ -275,12 +274,7 @@ function KpiCard({ title, value, prefix, isGood, hint }: { title: string, value:
     <div className={`bg-slate-900/80 p-5 rounded-2xl border ${isGood ? 'border-slate-700/50' : 'border-rose-500/50 shadow-lg shadow-rose-500/10'} relative group`}>
       <div className="flex justify-between items-start mb-2">
         <h4 className="text-sm font-bold text-slate-400">{title}</h4>
-        <Hint text={hint}>
-          <div className="text-slate-500 hover:text-slate-300 cursor-help">
-            <AlertTriangle size={14} className={!isGood ? "text-rose-500" : "hidden"} />
-            {isGood && <CheckCircle2 size={14} className="text-emerald-500" />}
-          </div>
-        </Hint>
+        <Hint text={hint} type={isGood ? 'success' : 'warning'} />
       </div>
       <div className="flex items-end gap-1">
         <span className={`text-2xl font-black ${isGood ? 'text-white' : 'text-rose-400'}`}>

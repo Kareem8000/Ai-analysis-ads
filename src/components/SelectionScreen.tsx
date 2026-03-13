@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Activity, Target, ArrowLeft, Palette } from 'lucide-react';
 
-export default function SelectionScreen({ onSelect }: { onSelect: (type: 'sales' | 'budget' | 'creative') => void }) {
+export default function SelectionScreen({ onSelect }: { onSelect: (type: 'sales' | 'budget' | 'creative' | 'selection') => void }) {
   return (
     <div dir="rtl" className="min-h-screen bg-slate-950 font-sans text-slate-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
       {/* Background Effects */}

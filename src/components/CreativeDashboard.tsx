@@ -6,7 +6,7 @@ import {
   Upload, Download, RefreshCw, Info, ExternalLink, Star, Activity,
   Eye, MousePointerClick, ShoppingCart, CreditCard, ShoppingBag, Palette, ChevronDown, ChevronUp, ArrowDown
 } from 'lucide-react';
-import { Hint, AnimatedValue, InputField } from './SharedComponents';
+import { Hint, AnimatedValue, InputField, Card } from './SharedComponents';
 
 export default function CreativeDashboard({ onBack, onNavigate }: { onBack: () => void, onNavigate: (target: 'selection' | 'sales' | 'budget' | 'creative') => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -15,13 +15,21 @@ export default function CreativeDashboard({ onBack, onNavigate }: { onBack: () =
   // Funnel Inputs
   const [inputs, setInputs] = useState({
     impressions: 100000,
+    reach: 80000,
+    allClicks: 2500,
     linkClicks: 1500,
     outboundClicks: 1000,
     landingPageViews: 800,
     addToCart: 60,
     checkout: 20,
     purchases: 10,
+    videoPlay25: 20000,
+    videoPlay50: 10000,
+    videoPlay75: 5000,
+    frequency: 1.5,
   });
+
+  const [campaignObjective, setCampaignObjective] = useState<'awareness' | 'engagement' | 'sales'>('sales');
 
   // Meta Standard Rankings
   const [rankings, setRankings] = useState({
@@ -30,9 +38,8 @@ export default function CreativeDashboard({ onBack, onNavigate }: { onBack: () =
     conversion: 'average',
   });
 
-  const handleInputChange = (field: string, value: string) => {
-    const numValue = value === '' ? 0 : Number(value);
-    setInputs(prev => ({ ...prev, [field]: numValue }));
+  const handleInputChange = (field: string, value: number) => {
+    setInputs(prev => ({ ...prev, [field]: value }));
   };
 
   const handleRankingChange = (field: string, value: string) => {
@@ -40,12 +47,128 @@ export default function CreativeDashboard({ onBack, onNavigate }: { onBack: () =
   };
 
   // Calculations
-  const ctr = inputs.impressions > 0 ? (inputs.linkClicks / inputs.impressions) * 100 : 0;
+  const ctrAll = inputs.impressions > 0 ? (inputs.allClicks / inputs.impressions) * 100 : 0;
+  const ctrLink = inputs.impressions > 0 ? (inputs.linkClicks / inputs.impressions) * 100 : 0;
+  const ctr = ctrLink; // Keeping existing ctr variable for compatibility
+
+  const videoPlay25Rate = inputs.reach > 0 ? (inputs.videoPlay25 / inputs.reach) * 100 : 0;
+  const videoPlay50Rate = inputs.reach > 0 ? (inputs.videoPlay50 / inputs.reach) * 100 : 0;
+  const videoPlay75Rate = inputs.reach > 0 ? (inputs.videoPlay75 / inputs.reach) * 100 : 0;
+
   const outboundRate = inputs.linkClicks > 0 ? (inputs.outboundClicks / inputs.linkClicks) * 100 : 0;
   const lpvRate = inputs.outboundClicks > 0 ? (inputs.landingPageViews / inputs.outboundClicks) * 100 : 0;
   const atcRate = inputs.landingPageViews > 0 ? (inputs.addToCart / inputs.landingPageViews) * 100 : 0;
   const checkoutRate = inputs.addToCart > 0 ? (inputs.checkout / inputs.addToCart) * 100 : 0;
   const purchaseRate = inputs.checkout > 0 ? (inputs.purchases / inputs.checkout) * 100 : 0;
+
+  const getRankingScore = (ranking: string) => {
+    if (ranking === 'above_average') return 100;
+    if (ranking === 'average') return 50;
+    return 20;
+  };
+  
+  const qualityScore = getRankingScore(rankings.quality);
+  const engagementScore = getRankingScore(rankings.engagement);
+  const conversionScore = getRankingScore(rankings.conversion);
+  const ctrScore = Math.min(100, Math.max(0, (ctrAll / 2) * 100));
+  const overallCreativeScore = Math.round((qualityScore + engagementScore + conversionScore + ctrScore) / 4);
+
+  const getVideoPlayEval = (rate: number) => {
+    if (rate > 20) return { text: 'ممتاز', color: 'text-emerald-400 bg-emerald-500/10' };
+    if (rate >= 10) return { text: 'جيد (يحتاج تحسين)', color: 'text-amber-400 bg-amber-500/10' };
+    return { text: 'سيء جداً (يحتاج تغيير)', color: 'text-rose-400 bg-rose-500/10' };
+  };
+
+  const getCtrAllEval = (rate: number) => {
+    if (rate > 2) return { text: 'ممتاز (الكريتيف يعمل جيداً)', color: 'text-emerald-400 bg-emerald-500/10' };
+    if (rate >= 1) return { text: 'جيد (يحتاج تحسين)', color: 'text-amber-400 bg-amber-500/10' };
+    return { text: 'مشكلة في الكريتيف أو الاستهداف', color: 'text-rose-400 bg-rose-500/10' };
+  };
+
+  const getFrequencyEval = (freq: number, objective: string) => {
+    if (objective === 'awareness') {
+      if (freq >= 5 && freq <= 7) return { text: 'طبيعي جداً', color: 'text-emerald-400 bg-emerald-500/10' };
+      return { text: 'خارج النطاق الطبيعي (5-7)', color: 'text-amber-400 bg-amber-500/10' };
+    }
+    if (objective === 'engagement') {
+      if (freq >= 2 && freq <= 4) return { text: 'طبيعي', color: 'text-emerald-400 bg-emerald-500/10' };
+      return { text: 'خارج النطاق الطبيعي (2-4)', color: 'text-amber-400 bg-amber-500/10' };
+    }
+    if (objective === 'sales') {
+      if (freq <= 3) return { text: 'جيد (التكلفة لن تزيد)', color: 'text-emerald-400 bg-emerald-500/10' };
+      return { text: 'مرتفع (قد تزيد التكلفة)', color: 'text-rose-400 bg-rose-500/10' };
+    }
+    return { text: 'غير محدد', color: 'text-slate-400 bg-slate-500/10' };
+  };
+
+  const getRankingsAnalysis = (q: string, e: string, c: string) => {
+    const isHighQ = q === 'above_average' || q === 'average';
+    const isHighE = e === 'above_average' || e === 'average';
+    const isHighC = c === 'above_average' || c === 'average';
+
+    if (isHighQ && !isHighE && !isHighC) {
+      return { 
+        title: 'جودة عالية، تفاعل وتحويل ضعيف', 
+        desc: 'نسخة الإعلان (Copy) جيدة، لكن نسبة النقر (CTR) ضعيفة ورسالة الإعلان غير واضحة.', 
+        color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' 
+      };
+    }
+    if (!isHighQ && isHighE && !isHighC) {
+      return { 
+        title: 'تفاعل عالي، جودة وتحويل ضعيف', 
+        desc: 'الإعلان يجذب الانتباه ولكنه غير مقنع. يتجاهل الناس إعلاناتك (جودة منخفضة) ولا توجد تحويلات.', 
+        color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30' 
+      };
+    }
+    if (!isHighQ && !isHighE && isHighC) {
+      return { 
+        title: 'تحويل عالي، جودة وتفاعل ضعيف', 
+        desc: 'الإعلان سيء أو ضعيف، لكن الناس يعرفون منتجك أو علامتك التجارية فدخلوا واشتروا.', 
+        color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/30' 
+      };
+    }
+    if (!isHighQ && isHighE && isHighC) {
+      return { 
+        title: 'تفاعل وتحويل عالي، جودة ضعيفة', 
+        desc: 'الإعلان والتحويلات جيدة، لكن قد يكون المنافسون تعمدوا الإضرار بك (مثل إخفاء المنشور أو التفاعل السلبي) مما أدى لانخفاض الجودة.', 
+        color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/30' 
+      };
+    }
+    if (isHighQ && !isHighE && isHighC) {
+      return { 
+        title: 'جودة وتحويل عالي، تفاعل ضعيف', 
+        desc: 'هذا طبيعي جداً في حملات المبيعات. ما يميز حملات المبيعات هو الجودة العالية والتحويل العالي.', 
+        color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' 
+      };
+    }
+    if (isHighQ && isHighE && !isHighC) {
+      return { 
+        title: 'جودة وتفاعل عالي، تحويل ضعيف', 
+        desc: 'لديك مشكلة في الـ CTA (الدعوة لاتخاذ إجراء) الخاص بالحملة، أو أن سعر المنتج غير واضح في الإعلان.', 
+        color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30' 
+      };
+    }
+    if (isHighQ && isHighE && isHighC) {
+      return { 
+        title: 'أداء مثالي', 
+        desc: 'أداء ممتاز من جميع النواحي. استمر في التوسع وزيادة الميزانية.', 
+        color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30' 
+      };
+    }
+    if (!isHighQ && !isHighE && !isHighC) {
+      return { 
+        title: 'أداء ضعيف جداً', 
+        desc: 'أداء سيء جداً. أوقف الإعلان فوراً وراجع الكريتيف والعرض.', 
+        color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/30' 
+      };
+    }
+
+    return { 
+      title: 'أداء متباين', 
+      desc: 'راجع المؤشرات الفردية لمعرفة الخلل بدقة.', 
+      color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-500/30' 
+    };
+  };
 
   // 10-Second Diagnosis Logic
   let diagnosis = {
@@ -359,23 +482,49 @@ Diagnosis Message,${diagnosis.message},-`;
             initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
             className="lg:col-span-1 space-y-6"
           >
-            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800/50 backdrop-blur-sm">
+            <Card className="p-6">
               <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <Eye className="text-purple-400" size={20} />
                 بيانات المسار (Funnel Data)
               </h3>
               <div className="space-y-4">
+                <InputField label="الوصول (Reach)" value={inputs.reach} onChange={(v) => handleInputChange('reach', v)} hint="عدد الأشخاص الفريدين الذين شاهدوا الإعلان." />
                 <InputField label="الظهور (Impressions)" value={inputs.impressions} onChange={(v) => handleInputChange('impressions', v)} hint="عدد مرات ظهور الإعلان." />
+                <InputField label="كل النقرات (All Clicks)" value={inputs.allClicks} onChange={(v) => handleInputChange('allClicks', v)} hint="إجمالي النقرات على الإعلان (تفاعل، تعليق، رابط)." />
                 <InputField label="النقرات (Link Clicks)" value={inputs.linkClicks} onChange={(v) => handleInputChange('linkClicks', v)} hint="عدد النقرات على رابط الإعلان." />
                 <InputField label="النقرات الصادرة (Outbound)" value={inputs.outboundClicks} onChange={(v) => handleInputChange('outboundClicks', v)} hint="النقرات التي أدت للخروج من المنصة." />
                 <InputField label="زيارات الموقع (Landing Page Views)" value={inputs.landingPageViews} onChange={(v) => handleInputChange('landingPageViews', v)} hint="عدد مرات تحميل صفحة الهبوط بنجاح." />
                 <InputField label="إضافة للسلة (Add to Cart)" value={inputs.addToCart} onChange={(v) => handleInputChange('addToCart', v)} hint="عدد مرات إضافة منتج للسلة." />
                 <InputField label="بدء الدفع (Checkout)" value={inputs.checkout} onChange={(v) => handleInputChange('checkout', v)} hint="عدد مرات الوصول لصفحة الدفع." />
                 <InputField label="المشتريات (Purchases)" value={inputs.purchases} onChange={(v) => handleInputChange('purchases', v)} hint="عدد عمليات الشراء الناجحة." />
+                
+                <div className="pt-4 border-t border-slate-800/50">
+                  <h4 className="text-sm font-bold text-slate-400 mb-4">مشاهدات الفيديو (Video Plays)</h4>
+                  <InputField label="مشاهدة 25%" value={inputs.videoPlay25} onChange={(v) => handleInputChange('videoPlay25', v)} hint="عدد مرات مشاهدة 25% من الفيديو." />
+                  <InputField label="مشاهدة 50%" value={inputs.videoPlay50} onChange={(v) => handleInputChange('videoPlay50', v)} hint="عدد مرات مشاهدة 50% من الفيديو." />
+                  <InputField label="مشاهدة 75%" value={inputs.videoPlay75} onChange={(v) => handleInputChange('videoPlay75', v)} hint="عدد مرات مشاهدة 75% من الفيديو." />
+                </div>
+                
+                <div className="pt-4 border-t border-slate-800/50">
+                  <h4 className="text-sm font-bold text-slate-400 mb-4">التكرار (Frequency)</h4>
+                  <InputField label="التكرار (Frequency)" value={inputs.frequency} onChange={(v) => handleInputChange('frequency', v)} hint="متوسط عدد مرات ظهور الإعلان للشخص الواحد." />
+                  <div className="mt-4">
+                    <label className="block text-sm font-bold text-slate-400 mb-2">هدف الحملة (Campaign Objective)</label>
+                    <select 
+                      value={campaignObjective} 
+                      onChange={(e) => setCampaignObjective(e.target.value as any)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                    >
+                      <option value="awareness">وعي بالعلامة التجارية (Awareness)</option>
+                      <option value="engagement">تفاعل (Engagement)</option>
+                      <option value="sales">مبيعات (Sales)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
-            </div>
+            </Card>
 
-            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800/50 backdrop-blur-sm">
+            <Card className="p-6">
               <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                 <Star className="text-yellow-400" size={20} />
                 مؤشرات جودة الإعلان (Meta Rankings)
@@ -418,7 +567,28 @@ Diagnosis Message,${diagnosis.message},-`;
                   </select>
                 </div>
               </div>
-            </div>
+
+              <div className="mt-6 pt-6 border-t border-slate-800/50">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-bold text-slate-400">نقاط الكريتيف (Creative Score)</h4>
+                  <Hint text="درجة من 100 تقيس جودة الإعلان بناءً على نسبة النقر وتصنيفات ميتا." type="info" />
+                </div>
+                <div className="flex items-end gap-2">
+                  <span className={`text-4xl font-black ${overallCreativeScore >= 80 ? 'text-emerald-400' : overallCreativeScore >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                    <AnimatedValue value={overallCreativeScore} />
+                  </span>
+                  <span className="text-slate-500 font-bold mb-1">/ 100</span>
+                </div>
+                <div className="w-full h-2 bg-slate-800 rounded-full mt-3 overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }} 
+                    animate={{ width: `${overallCreativeScore}%` }} 
+                    transition={{ duration: 1, delay: 0.5 }}
+                    className={`h-full ${overallCreativeScore >= 80 ? 'bg-emerald-500' : overallCreativeScore >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                  />
+                </div>
+              </div>
+            </Card>
           </motion.div>
 
           {/* Analysis Section */}
@@ -427,18 +597,125 @@ Diagnosis Message,${diagnosis.message},-`;
             className="lg:col-span-2 space-y-6"
           >
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <MetricCard title="نسبة النقر (CTR)" value={ctr} suffix="%" threshold={1} isGood={ctr >= 1} hint="أقل من 1% يعني مشكلة في الكريتيف." />
+              <MetricCard title="نسبة النقر (CTR Link)" value={ctrLink} suffix="%" threshold={1} isGood={ctrLink >= 1} hint="أقل من 1% يعني مشكلة في الكريتيف." />
               <MetricCard title="نسبة الخروج (Outbound)" value={outboundRate} suffix="%" threshold={70} isGood={outboundRate >= 70} hint="نسبة النقرات التي وصلت للموقع فعلياً." />
               <MetricCard title="نسبة الإضافة للسلة (ATC)" value={atcRate} suffix="%" threshold={10} isGood={atcRate >= 10} hint="يجب أن تكون بين 10% و 30%." />
               <MetricCard title="نسبة الوصول للدفع (Checkout)" value={checkoutRate} suffix="%" threshold={50} isGood={checkoutRate >= 50} hint="أقل من 50% يعني مشكلة في نموذج الطلب." />
               <MetricCard title="نسبة الشراء (Purchase)" value={purchaseRate} suffix="%" threshold={50} isGood={purchaseRate >= 50} hint="أقل من 50% يعني مشكلة في بوابات الدفع." />
             </div>
 
-            <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-800/50 backdrop-blur-sm mt-6">
+            {/* Advanced Creative Analysis */}
+            <Card className="p-0 mt-6 border-purple-500/30 shadow-2xl shadow-purple-500/10 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-900/40 to-indigo-900/40 p-6 border-b border-purple-500/20">
+                <h3 className="text-xl font-bold text-white flex items-center gap-3">
+                  <div className="p-2 bg-purple-500/20 rounded-lg border border-purple-500/30">
+                    <BrainCircuit className="text-purple-400" size={24} />
+                  </div>
+                  تحليل الكريتيف المتقدم (Advanced Creative Analysis)
+                </h3>
+                <p className="text-slate-400 text-sm mt-2 mr-14">
+                  تحليل عميق لمشاهدات الفيديو، التفاعل، وتصنيفات ميتا لاستخراج رؤى دقيقة حول أداء الإعلان.
+                </p>
+              </div>
+              
+              <div className="p-6 grid md:grid-cols-2 gap-6">
+                {/* Video Plays */}
+                <div className="space-y-4 bg-slate-900/50 p-5 rounded-2xl border border-slate-800 transition-all hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5">
+                  <h4 className="font-bold text-slate-200 flex items-center gap-2 mb-4">
+                    <Activity size={18} className="text-blue-400" />
+                    تحليل مشاهدات الفيديو (Video Plays)
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">مشاهدة 25% (الهوك)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white">{videoPlay25Rate.toFixed(1)}%</span>
+                        <span className={`text-xs px-2 py-1 rounded-md font-bold ${getVideoPlayEval(videoPlay25Rate).color}`}>
+                          {getVideoPlayEval(videoPlay25Rate).text}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">مشاهدة 50% (الاحتفاظ)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white">{videoPlay50Rate.toFixed(1)}%</span>
+                        <span className={`text-xs px-2 py-1 rounded-md font-bold ${getVideoPlayEval(videoPlay50Rate).color}`}>
+                          {getVideoPlayEval(videoPlay50Rate).text}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">مشاهدة 75% (الاهتمام)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white">{videoPlay75Rate.toFixed(1)}%</span>
+                        <span className={`text-xs px-2 py-1 rounded-md font-bold ${getVideoPlayEval(videoPlay75Rate).color}`}>
+                          {getVideoPlayEval(videoPlay75Rate).text}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                    * يتم حساب النسبة بناءً على الوصول (Reach). نسبة 50% أو أعلى تعتبر ممتازة.
+                  </p>
+                </div>
+
+                {/* CTR & Frequency */}
+                <div className="space-y-4 bg-slate-900/50 p-5 rounded-2xl border border-slate-800 transition-all hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/5">
+                  <h4 className="font-bold text-slate-200 flex items-center gap-2 mb-4">
+                    <MousePointerClick size={18} className="text-indigo-400" />
+                    التفاعل والتكرار (Engagement & Frequency)
+                  </h4>
+                  
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">نسبة التفاعل (CTR All)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white">{ctrAll.toFixed(2)}%</span>
+                        <span className={`text-xs px-2 py-1 rounded-md font-bold ${getCtrAllEval(ctrAll).color}`}>
+                          {getCtrAllEval(ctrAll).text}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-400">التكرار (Frequency)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-white">{inputs.frequency.toFixed(2)}</span>
+                        <span className={`text-xs px-2 py-1 rounded-md font-bold ${getFrequencyEval(inputs.frequency, campaignObjective).color}`}>
+                          {getFrequencyEval(inputs.frequency, campaignObjective).text}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-slate-800/50">
+                    <h5 className="text-xs font-bold text-slate-400 mb-3">تحليل تصنيفات ميتا (Meta Rankings):</h5>
+                    {(() => {
+                      const analysis = getRankingsAnalysis(rankings.quality, rankings.engagement, rankings.conversion);
+                      return (
+                        <div className={`p-4 rounded-xl border ${analysis.bg} ${analysis.border}`}>
+                          <h6 className={`font-bold text-sm mb-1 ${analysis.color}`}>{analysis.title}</h6>
+                          <p className="text-xs text-slate-300 leading-relaxed">
+                            {analysis.desc}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6 mt-6 border-slate-800/60">
               <h3 className="text-xl font-bold text-white mb-6">خريطة تساقط العملاء (Drop-off Map)</h3>
-              <div className="relative pt-8 pb-4">
+              <div className="relative pt-8 pb-4 px-4">
                 {/* Connecting Line */}
-                <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-800 -translate-y-1/2 z-0 rounded-full" />
+                <div className="absolute top-1/2 left-4 right-4 h-1 bg-slate-800 -translate-y-1/2 z-0 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-slate-700 to-slate-800 w-full" />
+                </div>
                 
                 <div className="flex justify-between relative z-10">
                   <DropoffNode label="الظهور" value={inputs.impressions} isProblem={false} />
@@ -449,7 +726,7 @@ Diagnosis Message,${diagnosis.message},-`;
                   <DropoffNode label="الشراء" value={inputs.purchases} isProblem={ctr >= 1 && lpvRate >= 70 && atcRate >= 10 && checkoutRate >= 50 && purchaseRate < 50} />
                 </div>
               </div>
-            </div>
+            </Card>
 
             {/* Funnel Modules */}
             <div className="space-y-4 mt-8">
@@ -478,9 +755,7 @@ Diagnosis Message,${diagnosis.message},-`;
                       <div>
                         <h4 className="font-bold text-lg text-white flex items-center gap-2">
                           {module.title}
-                          <Hint text={module.hint}>
-                            <Info size={14} className="text-slate-500" />
-                          </Hint>
+                          <Hint text={module.hint} type="info" />
                         </h4>
                         <div className="flex items-center gap-3 mt-1">
                           <span className={`text-sm font-bold px-2 py-0.5 rounded-md ${module.evalResult.color}`}>
@@ -577,34 +852,35 @@ Diagnosis Message,${diagnosis.message},-`;
 
 function MetricCard({ title, value, suffix, threshold, isGood, hint }: { title: string, value: number, suffix: string, threshold: number, isGood: boolean, hint: string }) {
   return (
-    <div className={`bg-slate-900/80 p-5 rounded-2xl border ${isGood ? 'border-slate-700/50' : 'border-rose-500/50 shadow-lg shadow-rose-500/10'} relative group`}>
-      <div className="flex justify-between items-start mb-2">
+    <div className={`bg-slate-900/60 backdrop-blur-md p-5 rounded-2xl border ${isGood ? 'border-slate-700/50' : 'border-rose-500/50 shadow-lg shadow-rose-500/10'} relative group overflow-hidden transition-all hover:scale-[1.02]`}>
+      <div className={`absolute top-0 right-0 w-full h-1 ${isGood ? 'bg-emerald-500/20' : 'bg-rose-500/50'}`} />
+      <div className="flex justify-between items-start mb-3">
         <h4 className="text-sm font-bold text-slate-400">{title}</h4>
-        <Hint text={hint}>
-          <Info size={14} className="text-slate-500" />
-        </Hint>
+        <Hint text={hint} type={isGood ? 'success' : 'warning'} />
       </div>
       <div className="flex items-end gap-2">
-        <span className={`text-2xl font-black ${isGood ? 'text-white' : 'text-rose-400'}`}>
+        <span className={`text-3xl font-black tracking-tight ${isGood ? 'text-white' : 'text-rose-400'}`}>
           <AnimatedValue value={value} />{suffix}
         </span>
       </div>
-      {!isGood && (
-        <div className="absolute top-2 left-2">
-          <AlertTriangle size={16} className="text-rose-500" />
-        </div>
-      )}
+      <div className="mt-3 flex items-center gap-2 text-xs font-medium">
+        <span className={isGood ? 'text-emerald-400' : 'text-rose-400'}>
+          {isGood ? 'أداء جيد' : 'يحتاج انتباه'}
+        </span>
+        <span className="text-slate-500">•</span>
+        <span className="text-slate-500">الهدف: {threshold}{suffix}</span>
+      </div>
     </div>
   );
 }
 
 function DropoffNode({ label, value, isProblem }: { label: string, value: number, isProblem: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-4 ${isProblem ? 'bg-rose-900/50 border-rose-500 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-slate-900 border-slate-700 text-slate-300'}`}>
+    <div className="flex flex-col items-center gap-3 group">
+      <div className={`w-14 h-14 rounded-full flex items-center justify-center text-sm font-bold border-4 transition-all duration-300 group-hover:scale-110 ${isProblem ? 'bg-rose-900/50 border-rose-500 text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.4)]' : 'bg-slate-900 border-slate-700 text-slate-300 group-hover:border-slate-500 group-hover:text-white'}`}>
         {value > 1000 ? (value / 1000).toFixed(1) + 'k' : value}
       </div>
-      <span className={`text-xs font-bold ${isProblem ? 'text-rose-400' : 'text-slate-500'}`}>{label}</span>
+      <span className={`text-xs font-bold transition-colors ${isProblem ? 'text-rose-400' : 'text-slate-500 group-hover:text-slate-300'}`}>{label}</span>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   AlertTriangle, CheckCircle2, Calculator, ArrowDown, Activity, Target,
   Upload, Download, BrainCircuit, BarChart3, PieChart as PieChartIcon, ChevronDown, ChevronUp, Info, ArrowRight
 } from 'lucide-react';
-import { ThreeDBar, Hint, AnimatedValue, InputField } from './SharedComponents';
+import { ThreeDBar, Hint, AnimatedValue, InputField, Card } from './SharedComponents';
 
 export default function SalesDashboard({ onBack, onNavigate }: { onBack: () => void, onNavigate: (target: 'selection' | 'sales' | 'budget' | 'creative') => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -339,10 +339,7 @@ export default function SalesDashboard({ onBack, onNavigate }: { onBack: () => v
         </motion.div>
 
         {/* Input Section (Sticky) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
-          className="bg-slate-900/80 p-6 rounded-2xl shadow-2xl border border-slate-700/50 sticky top-4 z-50 backdrop-blur-xl"
-        >
+        <Card className="p-6 sticky top-4 z-50">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
             <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
               <Calculator size={20} className="text-indigo-400" />
@@ -358,7 +355,7 @@ export default function SalesDashboard({ onBack, onNavigate }: { onBack: () => v
             <InputField label="Initiate Checkout" value={inputs.initiateCheckout} onChange={(v) => setInputs({...inputs, initiateCheckout: v})} hint="عدد مرات البدء في عملية الدفع" />
             <InputField label="Purchase" value={inputs.purchase} onChange={(v) => setInputs({...inputs, purchase: v})} hint="عدد عمليات الشراء الناجحة" />
           </div>
-        </motion.div>
+        </Card>
 
         {/* Smart Insights & Data Visualization */}
         <div className="grid lg:grid-cols-3 gap-6">
@@ -396,7 +393,7 @@ export default function SalesDashboard({ onBack, onNavigate }: { onBack: () => v
           </motion.div>
 
           {/* Funnel Chart */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl lg:col-span-1 relative group">
+          <Card className="p-6 lg:col-span-1">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <BarChart3 size={18} className="text-indigo-400" />
@@ -419,10 +416,10 @@ export default function SalesDashboard({ onBack, onNavigate }: { onBack: () => v
                 </FunnelChart>
               </ResponsiveContainer>
             </div>
-          </motion.div>
+          </Card>
 
           {/* Drop-off Pie Chart */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 }} className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl lg:col-span-1 relative">
+          <Card className="p-6 lg:col-span-1">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <PieChartIcon size={18} className="text-indigo-400" />
@@ -453,10 +450,10 @@ export default function SalesDashboard({ onBack, onNavigate }: { onBack: () => v
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </motion.div>
+          </Card>
 
           {/* Rates Bar Chart (3D) */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.7 }} className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl lg:col-span-1 relative">
+          <Card className="p-6 lg:col-span-1">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <BarChart3 size={18} className="text-indigo-400" />
@@ -477,7 +474,7 @@ export default function SalesDashboard({ onBack, onNavigate }: { onBack: () => v
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </motion.div>
+          </Card>
         </div>
 
         {/* Funnel Modules */}
